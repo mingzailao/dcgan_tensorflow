@@ -111,8 +111,8 @@ class DCGAN():
 
         h3=lrelu(batchnormalize(tf.matmul(h2,self.discrim_W3)))
         h3=tf.concat(1,[h3,Y])
-        y=tf.nn.sigmoid(h3)
-        return y
+        h4=tf.nn.sigmoid(batchnormalize(tf.matmul(h3,self.discrim_W4)))
+        return h4
     def samples_generator(self,batch_size):
         Z=tf.placeholder(tf.float32,[batch_size,self.dim_z])
         Y=tf.placeholder(tf.float32,[batch_size,self.dim_y])
