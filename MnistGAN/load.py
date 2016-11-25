@@ -1,47 +1,105 @@
-import sys
-sys.path.append('..')
-
-import numpy as np
+#!coding:utf8
+import tensorflow as tf
 import os
-from time import time
-from collections import Counter
-import random
-from matplotlib import pyplot as plt
+import numpy as np
+import sys
+import collections
+from six.moves import xrange
+import six
+import re
+from six.moves import urllib
+from tensorflow.python.platform import gfile
+import tarfile
+import gzip
+## Load dataset functions
+def load_mnist_dataset(shape=(-1,784)):
+    """Automatically download MNIST dataset
+    and return the training, validation and test set with 50000, 10000 and 10000
+    digit images respectively.
 
-data_dir = '/media/storage3/Study/data/mnist'
-def mnist():
-    fd = open(os.path.join(data_dir,'train-images-idx3-ubyte'))
-    loaded = np.fromfile(file=fd,dtype=np.uint8)
-    trX = loaded[16:].reshape((60000,28*28)).astype(float)
+    Parameters
+    ----------
+    shape : tuple
+        The shape of digit images
 
-    fd = open(os.path.join(data_dir,'train-labels-idx1-ubyte'))
-    loaded = np.fromfile(file=fd,dtype=np.uint8)
-    trY = loaded[8:].reshape((60000))
+    Examples
+    --------
+    >>> X_train, y_train, X_val, y_val, X_test, y_test = tl.files.load_mnist_dataset(shape=(-1,784))
+    >>> X_train, y_train, X_val, y_val, X_test, y_test = tl.files.load_mnist_dataset(shape=(-1, 28, 28, 1))
+    """
+    # We first define a download function, supporting both Python 2 and 3.
+    if sys.version_info[0] == 2:
+        from urllib import urlretrieve
+    else:
+        from urllib.request import urlretrieve
 
-    fd = open(os.path.join(data_dir,'t10k-images-idx3-ubyte'))
-    loaded = np.fromfile(file=fd,dtype=np.uint8)
-    teX = loaded[16:].reshape((10000,28*28)).astype(float)
+    def download(filename, source='http://yann.lecun.com/exdb/mnist/'):
+        print("Downloading %s" % filename)
+        urlretrieve(source + filename, filename)
 
-    fd = open(os.path.join(data_dir,'t10k-labels-idx1-ubyte'))
-    loaded = np.fromfile(file=fd,dtype=np.uint8)
-    teY = loaded[8:].reshape((10000))
+    # We then define functions for loading MNIST images and labels.
+    # For convenience, they also download the requested files if needed.
+    import gzip
 
-    trY = np.asarray(trY)
-    teY = np.asarray(teY)
+    def load_mnist_images(filename):
+        if not os.path.exists(filename):
+            download(filename)
+        # Read the inputs in Yann LeCun's binary format.
+        with gzip.open(filename, 'rb') as f:
+            data = np.frombuffer(f.read(), np.uint8, offset=16)
+        # The inputs are vectors now, we reshape them to monochrome 2D images,
+        # following the shape convention: (examples, channels, rows, columns)
+        data = data.reshape(shape)
+        # data = data.reshape(-1, 1, 28, 28)    # for lasagne
+        # data = data.reshape(-1, 28, 28, 1)      # for tensorflow
+        # data = data.reshape(-1, 784)      # for tensorflow
+        # The inputs come as bytes, we convert them to float32 in range [0,1].
+        # (Actually to range [0, 255/256], for compatibility to the version
+        # provided at http://deeplearning.net/data/mnist/mnist.pkl.gz.)
+        return data / np.float32(256)
 
-    return trX, teX, trY, teY
+    def load_mnist_labels(filename):
+        if not os.path.exists(filename):
+            download(filename)
+        # Read the labels in Yann LeCun's binary format.
+        with gzip.open(filename, 'rb') as f:
+            data = np.frombuffer(f.read(), np.uint8, offset=8)
+        # The labels are vectors of integers now, that's exactly what we want.
+        return data
 
-def mnist_with_valid_set():
-    trX, teX, trY, teY = mnist()
+    # We can now download and read the training and test set images and labels.
+    ## you may want to change the path
+    data_dir = '../data/'   #os.getcwd() + '/lasagne_tutorial/'
+    # print('data_dir > %s' % data_dir)
 
-    train_inds = range(len(trX))
-    np.random.shuffle(train_inds)
-    trX = trX[train_inds]
-    trY = trY[train_inds]
-    #trX, trY = shuffle(trX, trY)
-    vaX = trX[50000:]
-    vaY = trY[50000:]
-    trX = trX[:50000]
-    trY = trY[:50000]
+    X_train = load_mnist_images(data_dir+'train-images-idx3-ubyte.gz')
+    y_train = load_mnist_labels(data_dir+'train-labels-idx1-ubyte.gz')
+    X_test = load_mnist_images(data_dir+'t10k-images-idx3-ubyte.gz')
+    y_test = load_mnist_labels(data_dir+'t10k-labels-idx1-ubyte.gz')
 
-    return trX, vaX, teX, trY, vaY, teY
+    # We reserve the last 10000 training examples for validation.
+    X_train, X_val = X_train[:-10000], X_train[-10000:]
+    y_train, y_val = y_train[:-10000], y_train[-10000:]
+
+    ## you may want to plot one example
+    # print('X_train[0][0] >', X_train[0][0].shape, type(X_train[0][0]))  # for lasagne
+    # print('X_train[0] >', X_train[0].shape, type(X_train[0]))       # for tensorflow
+    # # exit()
+    #         #  [[..],[..]]      (28, 28)      numpy.ndarray
+    #         # plt.imshow 只支持 (28, 28)格式，不支持 (1, 28, 28),所以用 [0][0]
+    # fig = plt.figure()
+    # #plotwindow = fig.add_subplot(111)
+    # # plt.imshow(X_train[0][0], cmap='gray')    # for lasagne (-1, 1, 28, 28)
+    # plt.imshow(X_train[0].reshape(28,28), cmap='gray')     # for tensorflow (-1, 28, 28, 1)
+    # plt.title('A training image')
+    # plt.show()
+
+    # We just return all the arrays in order, as expected in main().
+    # (It doesn't matter how we do this as long as we can read them again.)
+    X_train = np.asarray(X_train, dtype=np.float32)
+    y_train = np.asarray(y_train, dtype=np.int32)
+    X_val = np.asarray(X_val, dtype=np.float32)
+    y_val = np.asarray(y_val, dtype=np.int32)
+    X_test = np.asarray(X_test, dtype=np.float32)
+    y_test = np.asarray(y_test, dtype=np.int32)
+    return X_train, y_train, X_val, y_val, X_test, y_test

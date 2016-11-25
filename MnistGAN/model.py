@@ -65,7 +65,7 @@ class DCGAN():
 
     def build_model(self):
         Z=tf.placeholder(tf.float32,[self.batch_size,self.dim_z])
-        Y=tf.placeholder(tf.float32m[self.batch_size,self.dim_y])
+        Y=tf.placeholder(tf.float32,[self.batch_size,self.dim_y])
 
         image_real=tf.placeholder(tf.float32,[self.batch_size]+self.image_shape)
         image_gen =self.generate(Z,Y)
@@ -89,13 +89,13 @@ class DCGAN():
         h2=tf.reshape(h2,[self.batch_size,7,7,self.dim_W2])
         h2=tf.concat(3,[h2,yb*tf.ones([self.batch_size,7,7,self.dim_y])])
 
-        out_put_shape_l3=[self.batch_size,14,14,self.dim_W3]
-        h3=tf.nn.conv2d_transpose(h2,self.gen_W3,out_put_shape=out_put_shape_l3,strides=[1,2,2,1])
+        output_shape_l3=[self.batch_size,14,14,self.dim_W3]
+        h3=tf.nn.conv2d_transpose(h2,self.gen_W3,output_shape=output_shape_l3,strides=[1,2,2,1])
         h3=tf.nn.relu(batchnormalize(h3))
         h3=tf.concat(3,[h3,yb*tf.ones([self.batch_size,14,14,self.dim_y])])
 
-        out_put_shape_l4=[self.batch_size,28,28,self.dim_channel]
-        h4=tf.nn.conv2d_transpose(h3,self.gen_W4,output_shape=out_put_shape_l4,strides=[1,2,2,1])
+        output_shape_l4=[self.batch_size,28,28,self.dim_channel]
+        h4=tf.nn.conv2d_transpose(h3,self.gen_W4,output_shape=output_shape_l4,strides=[1,2,2,1])
         x=tf.nn.sigmoid(h4)
         return x
     def discriminate(self,image,Y):
@@ -109,13 +109,13 @@ class DCGAN():
         h2=tf.reshape(h2,[self.batch_size,-1])
         h2=tf.concat(1,[h2,Y])
 
-        h3=relu(batchnormalize(tf.matmul(h2,self.discrim_W3)))
+        h3=lrelu(batchnormalize(tf.matmul(h2,self.discrim_W3)))
         h3=tf.concat(1,[h3,Y])
         y=tf.nn.sigmoid(h3)
         return y
     def samples_generator(self,batch_size):
         Z=tf.placeholder(tf.float32,[batch_size,self.dim_z])
-        Y=tf.placeholder(tf.float32,[batch_size,self.dimy])
+        Y=tf.placeholder(tf.float32,[batch_size,self.dim_y])
 
         yb=tf.reshape(Y,[batch_size,1,1,self.dim_y])
         Z_=tf.concat(1,[Y,Z])

@@ -6,8 +6,7 @@ import pandas as pd
 import numpy as np
 from model import *
 from util import *
-from load import mnist_with_valid_set
-
+from load import load_mnist_dataset
 n_epochs=100
 learning_rate=0.0002
 batch_size=128
@@ -19,7 +18,7 @@ dim_W3=64
 dim_channel=1
 
 visualize_dim=196
-trX,vaX,teX,trY,vaY,teY=mnist_with_valid_set()
+trX,trY,vaX,vaY,teX,teY=load_mnist_dataset(shape=(-1,784))
 
 dcgan_model=DCGAN(
     batch_size=batch_size,
@@ -34,7 +33,7 @@ sess=tf.InteractiveSession()
 saver=tf.train.Saver(max_to_keep=10)
 
 discrim_vars=filter(lambda x: x.name.startswith('discrim'),tf.trainable_variables())
-gen_vars    =filter(lambda x: x.name.startswith('gem'),tf.trainable_variables())
+gen_vars    =filter(lambda x: x.name.startswith('gen'),tf.trainable_variables())
 
 train_op_discrim = tf.train.AdamOptimizer(learning_rate,beta1=0.5).minimize(d_cost_tf,var_list=discrim_vars)
 train_op_gen     =tf.train.AdamOptimizer(learning_rate,beta1=0.5).minimize(g_cost_tf,var_list=gen_vars)
@@ -88,7 +87,7 @@ for epoch in range(n_epochs):
                 })
             gen_loss_val,p_real_val,p_gen_val=sess.run(
                 [g_cost_tf,p_real,p_gen],
-                feend_dict={
+                feed_dict={
                     Z_tf:Zs,
                     image_tf:Xs,
                     Y_tf:Ys
